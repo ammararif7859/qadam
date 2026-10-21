@@ -3,7 +3,7 @@
 The handoff file. Whoever continues (Ammar, Pi, another agent) starts here.
 Read `AGENTS.md` and `SPEC.md` first; "This run" rules from 21 Oct are summarised at the end.
 
-**Last updated:** 21 Oct 2026 — after Step 1 (skeleton).
+**Last updated:** 21 Oct 2026 — after Steps 2–4 (core logger logic).
 
 ---
 
@@ -35,11 +35,21 @@ Read `AGENTS.md` and `SPEC.md` first; "This run" rules from 21 Oct are summarise
 - Step 1 — Gradle skeleton (Gradle 9.8.2 wrapper, version catalog), `core` with the
   thresholds file and its tests, empty Compose `app` (unbuilt) with INTERNET removed,
   backup off, data-extraction rules, and `tools/check-apk-permissions.sh`.
+- Steps 2–4 — `core`: model and CSV format (§4 columns), gravity filter, motion RMS,
+  accelerometer step detector, step log, settings with this run's defaults, app
+  categories, day windows, summary-row builder, experience-sampling planner.
 
 ## 4. Built and tested vs unbuilt
 
-**Built and tested (`core`):**
-- `config/Thresholds.kt`, `config/Knobs.kt`, `resources/qadam/thresholds.properties` — 7 tests.
+**Built and tested (`core`, 39 tests):**
+- `config/` — thresholds file, loader, knob directions.
+- `model/`, `csv/` — rows and the CSV export format.
+- `signals/` — gravity filter, motion meter, accelerometer step detector, step log.
+  Step detector on synthetic data: 96–100 % of steps for normal walking at 10 and 20 Hz,
+  0 false steps lying/scrolling, ≤ 8 per 5 min with strong fidgeting. Very gentle walking
+  (bounce ≈ 1.2 m/s²) is undercounted — see phone checks.
+- `rules/Settings.kt` — settings model, app categories, day windows.
+- `logger/` — row accumulator, sampling planner.
 
 **UNBUILT (`app`)** — compile these first once the SDK is available:
 - `app/build.gradle.kts`, `AndroidManifest.xml`, `MainActivity.kt`, all `res/` files.
@@ -52,6 +62,9 @@ Read `AGENTS.md` and `SPEC.md` first; "This run" rules from 21 Oct are summarise
 None can be done before the app builds. Full list (filled in as features land):
 
 - [ ] Phase 0 / build: `./gradlew assembleDebug` prints the permission list with no INTERNET.
+- [ ] Step count: walk 100 counted steps holding the phone, then 100 with it in a pocket.
+      The debug view's step counter should rise by 90–110 each time. If it undercounts,
+      lower `step.min_peak` in `thresholds.properties` (default 0.8 m/s²).
 
 ## 6. Decisions taken (SPEC left them open)
 
@@ -60,12 +73,23 @@ None can be done before the app builds. Full list (filled in as features land):
 - All tunable numbers live in one file: `core/src/main/resources/qadam/thresholds.properties`.
   The app reads it as defaults; the Phase 1 script reads it too.
 - Core-only builds: `settings.gradle.kts` skips `:app` when `-Pqadam.coreOnly=true` is passed.
+- NIGHT ends at 06:00 by default (SPEC gives bedtime but no wake time). A setting.
+- Experience sampling: prompts between 08:00 and bedtime, ≥ 60 min apart; a prompt due
+  while the screen is off waits up to 60 min for screen-on, then is dropped.
+- `maxLevel` setting: 0 = logger only (Phase 0, the default on a fresh install),
+  1 = Level 1 only (Phase 2), 3 = full ladder (Phase 3). Raising it is a tightening (at
+  once); lowering it is a loosening (24 h), as SPEC §8 says for "switching a level off".
+- Settings, dialer, phone, telecom, emergency, clock, permission controller, package
+  installer and Qadam are always ALLOWED even if put on the drift list (AGENTS.md safety rule).
+  The app adds the phone's own default dialer/SMS/clock/launcher/Settings at runtime.
+- Accelerometer step detector: smoothed magnitude minus its slow average; peaks ≥ 0.8 m/s²,
+  steady pace (±35 %) between 1 and 2.5 steps/s, runs of ≥ 4; one missed peak inside a
+  run is counted. Sensor rate for the fallback: 20 Hz.
 
 ## 7. Next step
 
-Step 2–4: `core` CSV row + writer, signal processing (gravity filter, motion RMS,
-accelerometer step detector) and logger logic (row builder, app categories, windows,
-sampling planner), each with tests.
+Steps 5–10: the Android side of Phase 0 (Room storage, foreground service with sensors,
+accessibility counter, NFC, screens, sampling notification). All UNBUILT here.
 
 ## 8. How to build
 
