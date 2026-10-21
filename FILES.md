@@ -65,6 +65,12 @@ Gradle is the build tool: it downloads libraries, compiles the code and packs th
 - **`app/src/main/res/values/themes.xml`, `colors.xml`** — The window theme behind the Compose screens, a transparent theme for the NFC tag receiver, and the app colour.
 - **`app/src/main/res/mipmap-anydpi/ic_launcher.xml`, `drawable/ic_launcher_foreground.xml`** — The launcher icon, drawn as a vector so no image files are needed.
 
+## `analysis` — Phase 1, on the laptop (Python)
+
+- **`analysis/make_synthetic.py`** — Makes fake exports in the exact §4 format: days of sleep, drifting in bed, chores with a video, studying (also with a lecture on YouTube, a known false-positive source), eating, walks with audio, about 5 labels a day. The script and its tests are developed on this, never on your real data.
+- **`analysis/qadam_analyze.py`** — The Phase 1 script. It reads your export, groups rows by your labels (±5 min; chore mode counts as chores), shows each signal per activity (table + plots), replays the §6 rules, tries other threshold values, and writes `proposed_thresholds.properties` in the same format as the real file. Run: `python3 analysis/qadam_analyze.py my_export.csv`.
+- **`analysis/test_analysis.py`** — 16 tests on synthetic data: the CSV header equals SPEC §4 and the app's header, labels and chore mode are grouped right, the rules catch drifting and spare chores, a longer threshold catches less and hits less, the proposal file is valid, plots are written. Run: `python3 -m unittest discover -s analysis`.
+
 ## Tools
 
 - **`tools/check-apk-permissions.sh`** — Lists the permissions inside the built APK with `aapt2` (Android's resource tool) and fails if INTERNET is among them. AGENTS.md requires this after every build.

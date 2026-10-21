@@ -3,7 +3,7 @@
 The handoff file. Whoever continues (Ammar, Pi, another agent) starts here.
 Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in section 9.
 
-**Last updated:** 21 Oct 2026 — after the `core` rule engine (Phases 2+3 logic).
+**Last updated:** 21 Oct 2026 — after the Phase 1 script.
 
 ---
 
@@ -13,7 +13,7 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
 |---|---|
 | `core` (pure Kotlin, all rules) | **built and tested**: 116 unit tests pass (`./gradlew -Pqadam.coreOnly=true test`) |
 | `app` (Android) | **UNBUILT** — only the step-1 skeleton so far; never compiled |
-| Phase 1 script (`analysis/`) | not started |
+| Phase 1 script (`analysis/`) | **built and tested** on synthetic CSVs: 16 tests (`python3 -m unittest discover -s analysis`) |
 | Pushed to GitHub | **no** — no repo attached to the session yet |
 
 ## 2. Blockers in the Claude Code container (21 Oct)
@@ -42,6 +42,9 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
   the §6 states and §7 ladder as one state machine, with saved state; `rules/Commitment`
   for §8; `logger/Reports` for daily totals, off-times and the morning summary. Every §6–§8
   rule and every §12 scenario has a unit test; two deliberate bugs were caught by them.
+- Phase 1 script — `analysis/`: synthetic CSV generator, `qadam_analyze.py` (signal
+  table + plots per activity, rule replay, threshold sweeps, proposals in properties
+  format), 16 tests. Runs a synthetic week in about 2 s.
 
 ## 4. Built and tested vs unbuilt
 
@@ -55,6 +58,10 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
 - `rules/` — settings, app categories, day windows, commitment (§8).
 - `logger/` — row accumulator, sampling planner, reports.
 - `engine/` — states, ladder, saved state.
+
+**Built and tested (`analysis`, 16 tests, Python 3 standard library; plots need matplotlib):**
+- `make_synthetic.py`, `qadam_analyze.py`, `test_analysis.py`. The Python rule replay works
+  per summary row (30 s), the app's engine per 10-s tick, so their minutes differ slightly.
 
 **UNBUILT (`app`)** — compile these first once the SDK is available:
 - `app/build.gradle.kts`, `AndroidManifest.xml`, `MainActivity.kt`, all `res/` files.
@@ -79,6 +86,12 @@ Nothing can be checked on the phone until the app builds. Full list:
 - [ ] 2. Battery use (Settings → Battery) about 5 % a day or less.
 - [ ] 3. Exported CSV opens on the laptop, with labels in it.
 - [ ] 4. The APK's permission list has no INTERNET.
+
+**Phase 1 (laptop, after 1–3 weeks of Phase 0 logging)**
+- [ ] Export the summary CSV, run `python3 analysis/qadam_analyze.py export.csv`, read
+      `analysis/out/report.md` and the plots, copy the lines you agree with from
+      `analysis/out/proposed_thresholds.properties` into `thresholds.properties`, rebuild.
+      Never commit the export (`.gitignore` blocks `*.csv`).
 
 **Phase 2 (one week, Level 1 only)**
 - [ ] Under one false positive a day ("Wrong" button).
@@ -152,6 +165,14 @@ Ladder (§7)
 - During a call nothing fires, escalates or is drawn.
 - Pause (1 h, once a day) is refused during a Level 3 block.
 
+Phase 1 script
+- Each label covers rows within ±5 min (`--label-span`). Rows in chore mode with no label
+  near count as "chores" (labels are rare while the phone is in a pocket); `--no-chore-mode` turns this off.
+- Proposal = the tried value with the most (caught drifting minutes − 5 × minutes of chores
+  or studying hit by mistake), one threshold at a time; ties keep the current value. A
+  proposal at the edge of the tried range is flagged. Ammar decides what to copy.
+- Python standard library only, plus matplotlib for the plots (optional).
+
 Commitment (§8)
 - Loosening = anything that makes Qadam fire or block less: a looser threshold (direction
   per knob in `Knobs.kt`), removing a drift app, allowing a drift app, a later bedtime or
@@ -162,8 +183,9 @@ Commitment (§8)
 
 ## 7. Next step
 
-Phase 1 script (`analysis/`): synthetic CSV generator, the analysis script and its tests.
-Then the Android side of Phases 0, 2, 3 (all UNBUILT here).
+The Android side of Phases 0, 2, 3 (all UNBUILT here): Room storage, the foreground
+service with sensors, the accessibility counter and overlays, NFC, screens, sampling
+notification, export.
 
 ## 8. How to build
 
