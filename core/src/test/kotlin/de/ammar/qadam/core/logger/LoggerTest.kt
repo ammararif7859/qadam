@@ -221,3 +221,34 @@ class SamplingPlannerTest {
         assertEquals(listOf(first), planner.expired(first + 61 * 60_000L, plan, emptySet(), ZONE))
     }
 }
+
+class SettingsCodecTest {
+    @Test
+    fun `settings survive the trip through text`() {
+        val s = Settings(
+            driftApps = setOf("org.polymorphicshade.pipepipe", "com.google.android.youtube"),
+            allowedApps = setOf("com.whatsapp"),
+            bedtime = LocalTime.of(23, 15),
+            nightEnd = LocalTime.of(6, 30),
+            mealWindows = listOf(TimeRange.parse("13:00-14:00"), TimeRange.parse("19:30-20:15")),
+            plans = mapOf(
+                TimeWindow.DAY to Settings.EXAMPLE_PLAN,
+                TimeWindow.NIGHT to "Phone on the desk = charger,\nthen brush teeth \\ floss.",
+            ),
+            maxLevel = 3,
+            grayscale = true,
+            thresholdOverrides = mapOf("drift_screen.min" to 8.0, "reset.steps" to 60.0),
+        )
+        assertEquals(s, Settings.decode(s.encode()))
+        assertEquals(Settings(), Settings.decode(Settings().encode()))
+    }
+
+    @Test
+    fun `broken or missing text gives defaults`() {
+        assertEquals(Settings(), Settings.decode(null))
+        assertEquals(Settings(), Settings.decode(""))
+        val partial = Settings.decode("bedtime=notatime\nmaxLevel=1")
+        assertEquals(LocalTime.of(23, 30), partial.bedtime)
+        assertEquals(1, partial.maxLevel)
+    }
+}

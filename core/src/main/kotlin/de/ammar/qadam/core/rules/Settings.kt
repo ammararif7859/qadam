@@ -59,8 +59,70 @@ data class Settings(
     fun planFor(window: TimeWindow): String =
         plans[window]?.takeIf { it.isNotBlank() } ?: plans[TimeWindow.DAY].orEmpty()
 
+    /**
+     * Text form for the app's database: one `key=value` per line. Plan texts are escaped
+     * so they may contain any character.
+     */
+    fun encode(): String = buildList {
+        add("driftApps=" + driftApps.sorted().joinToString(","))
+        add("allowedApps=" + allowedApps.sorted().joinToString(","))
+        add("bedtime=$bedtime")
+        add("nightEnd=$nightEnd")
+        add("mealWindows=" + mealWindows.joinToString(","))
+        for ((w, text) in plans) add("plan.${w.name}=" + escape(text))
+        add("maxLevel=$maxLevel")
+        add("grayscale=$grayscale")
+        for ((k, v) in thresholdOverrides.toSortedMap()) add("threshold.$k=$v")
+    }.joinToString("\n")
+
     companion object {
         const val EXAMPLE_PLAN = "After eating → plate to the sink, food in the fridge, then sit at the desk."
+
+        private fun escape(s: String) = s.replace("\\", "\\\\").replace("\n", "\\n")
+        private fun unescape(s: String): String {
+            val sb = StringBuilder()
+            var i = 0
+            while (i < s.length) {
+                val c = s[i]
+                if (c == '\\' && i + 1 < s.length) {
+                    sb.append(if (s[i + 1] == 'n') '\n' else s[i + 1]); i += 2
+                } else {
+                    sb.append(c); i++
+                }
+            }
+            return sb.toString()
+        }
+
+        /** Reads [encode]'s format. Missing keys keep their defaults; broken values too. */
+        fun decode(text: String?): Settings {
+            if (text.isNullOrBlank()) return Settings()
+            var s = Settings()
+            val plans = mutableMapOf<TimeWindow, String>()
+            val overrides = mutableMapOf<String, Double>()
+            for (line in text.lines()) {
+                val i = line.indexOf('=')
+                if (i <= 0) continue
+                val k = line.substring(0, i)
+                val v = line.substring(i + 1)
+                runCatching {
+                    when {
+                        k == "driftApps" -> s = s.copy(driftApps = v.split(",").filter { it.isNotBlank() }.toSet())
+                        k == "allowedApps" -> s = s.copy(allowedApps = v.split(",").filter { it.isNotBlank() }.toSet())
+                        k == "bedtime" -> s = s.copy(bedtime = LocalTime.parse(v))
+                        k == "nightEnd" -> s = s.copy(nightEnd = LocalTime.parse(v))
+                        k == "mealWindows" -> s = s.copy(
+                            mealWindows = v.split(",").filter { it.isNotBlank() }.map { TimeRange.parse(it) },
+                        )
+                        k.startsWith("plan.") -> plans[TimeWindow.valueOf(k.removePrefix("plan."))] = unescape(v)
+                        k == "maxLevel" -> s = s.copy(maxLevel = v.toInt().coerceIn(0, 3))
+                        k == "grayscale" -> s = s.copy(grayscale = v.toBoolean())
+                        k.startsWith("threshold.") -> overrides[k.removePrefix("threshold.")] = v.toDouble()
+                    }
+                }
+            }
+            if (plans.isNotEmpty()) s = s.copy(plans = plans)
+            return s.copy(thresholdOverrides = overrides)
+        }
     }
 }
 

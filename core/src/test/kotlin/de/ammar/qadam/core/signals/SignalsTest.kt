@@ -152,3 +152,19 @@ class StepLogTest {
         assertEquals(1, log.inLast(60 * 60_000L, 20 * 60_000L))
     }
 }
+
+class GestureCounterTest {
+    @Test
+    fun `a burst of scroll events is one scroll, a pause starts the next`() {
+        val g = GestureCounter(400)
+        // Flick 1: events every 100 ms for 0.6 s. Pause. Flick 2.
+        val times = (0L..600L step 100) + (1500L..1900L step 100)
+        assertEquals(2, times.count { g.onEvent(it) })
+    }
+
+    @Test
+    fun `slow steady scrolling counts each step`() {
+        val g = GestureCounter(400)
+        assertEquals(5, (0L until 5000L step 1000).count { g.onEvent(it) })
+    }
+}
