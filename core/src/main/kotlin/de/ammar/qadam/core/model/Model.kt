@@ -107,7 +107,10 @@ enum class EventType {
     SAMPLING_PROMPT,
     LABEL,
     INTERVENTION,
+    /** The ladder went back to Level 0; detail says why. */
+    RESET,
     RESPONSE,
+    CHORE_END,
     OVERRIDE,
     PAUSE,
     SETTING_CHANGE,
