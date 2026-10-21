@@ -19,3 +19,8 @@ __pycache__/
 *.csv
 !analysis/testdata/*.csv
 analysis/out/
+
+# type-check harness output
+tools/typecheck/build/
+tools/typecheck/.gradle/
+tools/typecheck/.kotlin/

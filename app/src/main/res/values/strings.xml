@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UNBUILT. Texts Android itself shows (app name, accessibility settings). -->
+<resources>
+    <string name="app_name">Qadam</string>
+    <string name="accessibility_label">Qadam scroll counter</string>
+    <string name="accessibility_description">Counts scrolls and taps and shows Qadam\'s nudges over apps. It never reads text, titles, URLs or notification contents: only how many scrolls and taps happen, and in which app.</string>
+</resources>

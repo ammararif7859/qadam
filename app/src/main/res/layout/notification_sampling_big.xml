@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UNBUILT. Experience sampling, expanded and heads-up: two rows of three answers. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button android:id="@+id/label_chores" style="@style/Qadam.LabelButton.Big" android:text="Chores" />
+        <Button android:id="@+id/label_studying" style="@style/Qadam.LabelButton.Big" android:text="Studying" />
+        <Button android:id="@+id/label_eating" style="@style/Qadam.LabelButton.Big" android:text="Eating" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button android:id="@+id/label_resting" style="@style/Qadam.LabelButton.Big" android:text="Resting" />
+        <Button android:id="@+id/label_drifting" style="@style/Qadam.LabelButton.Big" android:text="Drifting" />
+        <Button android:id="@+id/label_other" style="@style/Qadam.LabelButton.Big" android:text="Other" />
+    </LinearLayout>
+</LinearLayout>

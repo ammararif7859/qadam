@@ -57,13 +57,50 @@ Gradle is the build tool: it downloads libraries, compiles the code and packs th
 
 ## `app` — the Android app (UNBUILT)
 
-- **`app/build.gradle.kts`** — Builds the APK: package `de.ammar.qadam`, `minSdk 29` (Android 10), `targetSdk 37` (Android 17). After every debug build it runs the permission check below.
-- **`app/src/main/AndroidManifest.xml`** — The manifest: the app's ID card, listing its permissions, screens and background parts. It removes INTERNET (and network-state) even if a library tries to add it, and switches backup off.
-- **`app/src/main/kotlin/de/ammar/qadam/MainActivity.kt`** — The activity (one full screen of an app) that hosts all Compose screens. Compose is Android's way of describing a screen in Kotlin code instead of XML layouts.
-- **`app/src/main/res/xml/data_extraction_rules.xml`** — Tells Android 12+ to copy nothing to Google's cloud backup and nothing to a new phone. Your data stays on this phone.
-- **`app/src/main/res/xml/backup_rules.xml`** — The same rule in the older format for Android 10–11.
-- **`app/src/main/res/values/themes.xml`, `colors.xml`** — The window theme behind the Compose screens, a transparent theme for the NFC tag receiver, and the app colour.
-- **`app/src/main/res/mipmap-anydpi/ic_launcher.xml`, `drawable/ic_launcher_foreground.xml`** — The launcher icon, drawn as a vector so no image files are needed.
+None of these has been built with the Android SDK yet. The Kotlin files were type-checked with `tools/typecheck` (see Tools); the XML files were only checked for being well-formed and for matching names.
+
+**Build and identity**
+- **`app/build.gradle.kts`** — Builds the APK: package `de.ammar.qadam`, `minSdk 29` (Android 10), `targetSdk 37` (Android 17). After every debug build it runs the permission check, so an INTERNET permission can never slip in unnoticed.
+- **`app/src/main/AndroidManifest.xml`** — The manifest: the app's ID card. It lists every permission (and removes INTERNET even if a library adds it), the screens, the logger service (type "health"), the accessibility service, the NFC tag receiver and the boot receiver. Its `<queries>` block says which other apps Qadam may see (Android 11+ hides the rest).
+- **`QadamApp.kt`** — The Application object, created once when the app's process starts. It opens the database and creates the notification channels.
+- **`Bridge.kt`** — The meeting point inside the app's process: the logger service, the accessibility service, the NFC screen and the UI find each other here. It also holds the live values for the debug view and the scroll/tap counters. And the log tag `Qadam` (`adb logcat -s Qadam`).
+
+**Storage (`data/`)**
+- **`data/QadamDb.kt`** — The Room database: five tables (summary rows, events, small named values like the settings, pending loosenings, daily totals) and the DAO, the list of queries the app runs. Room turns these annotated Kotlin classes into SQLite code at build time.
+- **`data/Repo.kt`** — The one door to the database. It converts between `core`'s types and stored rows, applies the §8 commitment rules to every settings change, writes the CSV export page by page, and does the 30-day retention.
+
+**The logger (`service/`)**
+- **`service/QadamService.kt`** — The heart of the app on the phone: a foreground service (Android keeps it alive because it shows a permanent notification). Every 2–60 seconds it reads all signals, asks `core`'s engine what to do, and does it: overlays, audio, grayscale, vibration, notifications, event rows; every 30 s or 5 min it writes a summary row. It also runs sampling, the morning summary and retention.
+- **`service/PhoneState.kt`** — Reads screen on/off, locked, audio playing, headphones, phone call and charging; and which app is in front (from Usage access). While the phone is locked no app counts as "in front", so no overlay can cover the lock screen or its emergency button.
+- **`service/SensorHub.kt`** — Checks which sensors the phone has and listens to them only while the screen is on or audio plays. On your phone (no step sensor) steps come from `core`'s accelerometer step detector; missing gravity or linear-acceleration sensors are replaced by the filter in `core`.
+- **`service/AudioAndScreen.kt`** — Pausing other apps' audio through audio focus (Levels 2 and 3), grayscale through Android's colour-correction setting (needs the adb grant), the one vibration, and the lookup of the phone's own dialer, SMS app, clock, camera, Settings and home screen so they are never blocked.
+- **`service/Notifications.kt`** — All notifications: the permanent one of the service, the "Right now?" question with six one-tap answers (a custom layout, because a normal notification allows only three buttons), the screen-off Level 1 nudge with its three buttons, and the morning summary.
+- **`service/Receivers.kt`** — Broadcast receivers, small entry points Android calls: one restarts the logger after a reboot or app update (§12 scenario 7); the other handles taps on notification buttons.
+
+**Accessibility (`accessibility/`)**
+- **`accessibility/QadamAccessibilityService.kt`** — The accessibility service you switch on in Settings. It only counts scroll gestures and taps (never reads text or screen content) and logs when it is switched on or off. It also hosts the overlays, because an accessibility service may draw over every app.
+- **`accessibility/Overlays.kt`** — The Level 1 card (bottom of the screen, app stays usable), the Level 2 full screen (type the next action) and the Level 3 block (tag or 30-second hold + reason). Both full screens have a "Go to the home screen" button, so you can always reach Settings or the dialer.
+
+**NFC (`nfc/`)**
+- **`nfc/TagActivity.kt`** — An invisible screen Android opens when a Qadam tag touches the phone. It starts chore mode (and lifts a Level 3 block) through the service and closes at once.
+- **`nfc/TagWriter.kt`** — Writes `qadam://tag/<name>` plus an "open Qadam" record onto an NTAG213/215 sticker, and reads it back for the test.
+
+**Screens (`MainActivity.kt`, `ui/`)**
+- **`MainActivity.kt`** — The one activity (a full screen of an app). It shows the five screens behind a bottom bar and starts the logger if it isn't running.
+- **`ui/Common.kt`** — Shared pieces: the colour theme (light and dark), titled cards, "label … value" rows, small formatting helpers.
+- **`ui/TodayScreen.kt`** — Now (state, level, chore mode, pause button), today's totals, and the live debug view of every signal plus the sensor check — the Phase 0 tool for checking each sensor works.
+- **`ui/RulesScreen.kt`** — Levels on/off, drift and allowed apps (picked from installed apps), bedtime, night end, meal windows, if-then plans, grayscale, every editable threshold, and pending loosenings with "active tomorrow at hh:mm" and a Cancel button.
+- **`ui/TagsScreen.kt`** — Write a tag, test a tag, last real tap, and where to stick tags (far from the bed).
+- **`ui/DataScreen.kt`** — Export summary rows and events as CSV through Android's file picker, the 30-day retention with kept daily totals, and "delete all data" (type DELETE to confirm).
+- **`ui/PermissionsScreen.kt`** — Each permission with its status and a button to its settings page, the HiOS battery settings of §13, NFC, and the adb command for grayscale.
+
+**Resources (`res/`)**
+- **`res/xml/accessibility_service_config.xml`** — The accessibility service's limits: only scroll and click events, `canRetrieveWindowContent="false"`.
+- **`res/xml/data_extraction_rules.xml`, `res/xml/backup_rules.xml`** — Nothing goes to Google's cloud backup or to a new phone (Android 12+ and Android 10–11 formats).
+- **`res/layout/notification_sampling_small.xml`, `..._big.xml`** — The six answer buttons of the "Right now?" notification: one row when collapsed or heads-up, two rows when expanded.
+- **`res/values/strings.xml`** — The texts Android itself shows: app name, and the accessibility description (which promises what the service never reads).
+- **`res/values/themes.xml`, `colors.xml`** — Window themes (normal and the invisible NFC screen), notification button styles, the app colour.
+- **`res/mipmap-anydpi/ic_launcher.xml`, `res/drawable/ic_launcher_foreground.xml`, `res/drawable/ic_stat_qadam.xml`** — The launcher icon and the one-colour status-bar icon, drawn as vectors.
 
 ## `analysis` — Phase 1, on the laptop (Python)
 
@@ -73,4 +110,5 @@ Gradle is the build tool: it downloads libraries, compiles the code and packs th
 
 ## Tools
 
+- **`tools/typecheck/`** — TEMPORARY, delete once the real build works. A separate small Gradle build that compiles the app and `core` sources against Android 17's framework classes (Robolectric's `android-all` jar from Maven Central) and desktop Compose, with stand-ins for Room and a few AndroidX pieces in `stubs/`. It caught wrong API names without the SDK; it is not a real build. Run: `./gradlew -p tools/typecheck compileKotlin`.
 - **`tools/check-apk-permissions.sh`** — Lists the permissions inside the built APK with `aapt2` (Android's resource tool) and fails if INTERNET is among them. AGENTS.md requires this after every build.

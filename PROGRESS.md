@@ -3,7 +3,7 @@
 The handoff file. Whoever continues (Ammar, Pi, another agent) starts here.
 Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in section 9.
 
-**Last updated:** 21 Oct 2026 — after the Phase 1 script.
+**Last updated:** 21 Oct 2026 — after the Android side of Phases 0, 2, 3 (unbuilt, type-checked).
 
 ---
 
@@ -11,8 +11,8 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
 
 | Part | Status |
 |---|---|
-| `core` (pure Kotlin, all rules) | **built and tested**: 116 unit tests pass (`./gradlew -Pqadam.coreOnly=true test`) |
-| `app` (Android) | **UNBUILT** — only the step-1 skeleton so far; never compiled |
+| `core` (pure Kotlin, all rules) | **built and tested**: 120 unit tests pass (`./gradlew -Pqadam.coreOnly=true test`) |
+| `app` (Android) | **UNBUILT** — all of Phases 0, 2, 3 written; never built with the SDK; Kotlin type-checked with `tools/typecheck` |
 | Phase 1 script (`analysis/`) | **built and tested** on synthetic CSVs: 16 tests (`python3 -m unittest discover -s analysis`) |
 | Pushed to GitHub | **no** — no repo attached to the session yet |
 
@@ -45,6 +45,15 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
 - Phase 1 script — `analysis/`: synthetic CSV generator, `qadam_analyze.py` (signal
   table + plots per activity, rule replay, threshold sweeps, proposals in properties
   format), 16 tests. Runs a synthetic week in about 2 s.
+- `core` extras for the app — settings text format, scroll-gesture counter (120 tests).
+- Android side (UNBUILT) — Room database and repository; foreground logger service with
+  sensors, usage stats, audio/call/charging state, accelerometer fallbacks, summary and
+  event rows, gap detection; accessibility scroll/tap counter and Level 1–3 overlays;
+  audio focus, grayscale, vibration; NFC tag receiver and writer; sampling, Level 1
+  screen-off and morning notifications; boot receiver; the five screens (Today with live
+  debug view, Rules, Tags, Data with CSV export, Permissions). Type-checked against
+  Robolectric's android-all 17 jar + desktop Compose 1.6.11 + stubs (`tools/typecheck`);
+  resources checked for well-formed XML and matching names.
 
 ## 4. Built and tested vs unbuilt
 
@@ -63,11 +72,17 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
 - `make_synthetic.py`, `qadam_analyze.py`, `test_analysis.py`. The Python rule replay works
   per summary row (30 s), the app's engine per 10-s tick, so their minutes differ slightly.
 
-**UNBUILT (`app`)** — compile these first once the SDK is available:
-- `app/build.gradle.kts`, `AndroidManifest.xml`, `MainActivity.kt`, all `res/` files.
+**UNBUILT (`app`)** — every file under `app/` (header line says so). First real build:
+- Expect some build errors: the type check didn't cover Room's annotation processor (SQL
+  in `QadamDb.kt`), the real AndroidX APIs (stubs in `tools/typecheck/stubs` stood in for
+  Room, activity-compose, `LocalContext`), resource linking, the manifest merge, or lint.
 - Versions in `gradle/libs.versions.toml` were read from developer.android.com release
-  notes (AGP 9.4.0, Compose BOM 2026.09.00, Room 2.8.5, Activity 1.13.0) but never resolved.
+  notes (AGP 9.4.0, Compose BOM 2026.09.00, Room 2.8.5, Activity 1.13.0, KSP 2.3.12) but
+  never resolved. Unchecked: KSP 2.3.12 with Kotlin 2.4.21 and Room 2.8.5.
 - `compileSdk = 37` uses the classic DSL; AGP 9 also has a newer `compileSdk { }` form. Unchecked.
+- Unchecked on HiOS: the grayscale setting names, audio focus pausing PipePipe, custom
+  notification layouts, accessibility overlays above the navigation bar.
+- After the real build works, delete `tools/typecheck/` and change the header lines.
 
 ## 5. Phone checks Ammar still owes
 
@@ -77,8 +92,23 @@ Nothing can be checked on the phone until the app builds. Full list:
 - [ ] `./gradlew test assembleDebug lint` passes; the permission list printed after
       `assembleDebug` has no INTERNET.
 
+**First install (laptop + phone)**
+- [ ] `adb install -r app/build/outputs/apk/debug/app-debug.apk` (installs the debug APK
+      over USB; nothing else changes on the phone).
+- [ ] Open Qadam → Permissions: grant Activity recognition (the logger needs it on
+      Android 14), Notifications, Usage access, Accessibility (if greyed out: App info → ⋮ →
+      Allow restricted settings), battery "Unrestricted", and the three HiOS settings.
+- [ ] Optional grayscale: `adb shell pm grant de.ammar.qadam android.permission.WRITE_SECURE_SETTINGS`
+      (lets Qadam switch the colour correction; can be revoked with `pm revoke`).
+- [ ] Rules: add drift apps (PipePipe, YouTube …) and allowed apps; Tags: write the stickers.
+
 **Phase 0 (SPEC §11)**
 - [ ] Debug view shows every sensor's status (first check of Phase 0).
+- [ ] Debug view: scrolls count about one per flick in PipePipe; the app in front is right;
+      audio, headphones, charging, proximity (cover the top of the phone), light change.
+- [ ] A sampling notification appears (about 5 a day) and one tap on an answer closes it;
+      the next exported CSV has the label in that row.
+- [ ] A tag tap shows "Qadam: chore mode (kitchen)" and Today shows chore mode.
 - [ ] Step count: walk 100 counted steps holding the phone, then 100 with it in a pocket.
       The debug step counter should rise by 90–110 each time. If it undercounts, lower
       `step.min_peak` in `thresholds.properties` (default 0.8 m/s²).
@@ -165,6 +195,25 @@ Ladder (§7)
 - During a call nothing fires, escalates or is drawn.
 - Pause (1 h, once a day) is refused during a Level 3 block.
 
+App (Android side)
+- Overlays are plain Android views in accessibility-overlay windows (no "display over other
+  apps" permission; Compose outside an activity needs extra plumbing).
+- Full-screen overlays (Levels 2, 3) have a "Go to the home screen" button; while the phone
+  is locked no app counts as in front, so nothing ever covers the lock screen.
+- Tick every 2 s at Level ≥ 2 with the screen on (blocks appear fast), 10 s with screen on
+  or audio, 60 s otherwise; every 2 s while a Qadam screen is open (live debug view).
+- In a call = audio mode ringing / in call / in communication (no phone permission needed).
+- One scroll = one burst of scroll events (events < 400 ms apart are one flick).
+- Off-time for the morning summary: a gap is logged only when the service restarts after
+  > 6 min without a heartbeat, from the last heartbeat to the restart — an upper bound
+  (if the phone slept first, the sleep is counted too).
+- The engine state is saved after every change, so a reboot or kill keeps a Level 3 block.
+- Sampling continues in every phase (labels stay useful); the plan is recomputed from the
+  date and a per-install random seed.
+- Writing or testing a tag on the Tags screen uses NFC reader mode, so it doesn't start chore mode.
+- The foreground service needs Activity recognition on Android 14+ (health type); without
+  it the logger doesn't start and the Today screen says so.
+
 Phase 1 script
 - Each label covers rows within ±5 min (`--label-span`). Rows in chore mode with no label
   near count as "chores" (labels are rare while the phone is in a pocket); `--no-chore-mode` turns this off.
@@ -183,9 +232,11 @@ Commitment (§8)
 
 ## 7. Next step
 
-The Android side of Phases 0, 2, 3 (all UNBUILT here): Room storage, the foreground
-service with sensors, the accessibility counter and overlays, NFC, screens, sampling
-notification, export.
+**Build the app with the Android SDK** (Pi's `pi-android` image, SPEC §15 Route A, or this
+container once `dl.google.com` is allowed): `./gradlew test assembleDebug lint`, fix the
+build errors, show Ammar the permission list, then delete `tools/typecheck/` and update the
+UNBUILT header lines. Then Ammar's phone checks, in section 5's order. Phase 0 first:
+interventions stay off (`maxLevel` 0) until Phase 1's numbers are in.
 
 ## 8. How to build
 

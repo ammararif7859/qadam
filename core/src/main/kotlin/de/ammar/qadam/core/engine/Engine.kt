@@ -451,9 +451,9 @@ class Engine(
         events: List<EventRow>,
         tk: Tick? = lastTick,
     ): Output {
-        val screenOn = tk?.screenOn == true
-        val inCall = tk?.inCall == true
-        val isDrift = screenOn && categorizer.isDrift(tk?.app)
+        val screenOn = tk != null && tk.screenOn
+        val inCall = tk != null && tk.inCall
+        val isDrift = tk != null && tk.screenOn && categorizer.isDrift(tk.app)
         val plan = settings.planFor(window)
         val overlay: Overlay = when {
             inCall || !isDrift -> Overlay.None
