@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UNBUILT. Launcher icon foreground: a footprint-like step mark. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M44,34 a8,11 0 1,0 16,0 a8,11 0 1,0 -16,0 z M42,52 h20 v26 a10,10 0 0,1 -20,0 z" />
+</vector>

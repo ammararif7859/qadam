@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- UNBUILT. The window theme behind Compose; the screens draw their own Material 3 theme. -->
+<resources>
+    <style name="Theme.Qadam" parent="android:Theme.Material.NoActionBar" />
+    <!-- Transparent activity that only receives NFC tag taps. -->
+    <style name="Theme.Qadam.Invisible" parent="android:Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>

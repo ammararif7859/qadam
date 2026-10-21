@@ -1,0 +1,21 @@
+# Gradle and build output
+.gradle/
+build/
+.kotlin/
+local.properties
+# IDEs
+.idea/
+*.iml
+.vscode/
+# Android
+*.apk
+*.aab
+captures/
+# Python
+__pycache__/
+*.pyc
+.venv/
+# Never commit real data exports (SPEC §15)
+*.csv
+!analysis/testdata/*.csv
+analysis/out/
