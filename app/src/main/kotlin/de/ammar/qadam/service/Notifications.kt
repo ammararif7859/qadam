@@ -1,4 +1,3 @@
-// UNBUILT: never built with the Android SDK. Type-checked only (android-all 17 + Compose desktop + stubs), 21 Oct 2026.
 package de.ammar.qadam.service
 
 import android.app.Notification

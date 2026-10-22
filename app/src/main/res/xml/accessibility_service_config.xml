@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- UNBUILT. SPEC §4: only scroll and click events; canRetrieveWindowContent is false,
+<!-- SPEC §4: only scroll and click events; canRetrieveWindowContent is false,
      so Android never gives Qadam the text or structure of any screen. -->
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeViewScrolled|typeViewClicked"

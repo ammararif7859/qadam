@@ -2,7 +2,7 @@
 
 2–4 plain sentences per file: what it does and why Qadam needs it.
 Android terms are explained the first time they appear.
-"UNBUILT" means the file was written without the Android SDK and has never been compiled.
+Everything here builds (22 Oct 2026); nothing has run on a phone yet.
 
 ---
 
@@ -19,7 +19,8 @@ Android terms are explained the first time they appear.
 Gradle is the build tool: it downloads libraries, compiles the code and packs the APK (the installable app file).
 
 - **`settings.gradle.kts`** — Names the modules (`core`, `app`) and the download sites. Passing `-Pqadam.coreOnly=true` leaves `app` out, so `core` can be built and tested on a machine without the Android SDK.
-- **`build.gradle.kts`** (root) — Declares the Kotlin plugin once for the whole project. The Android plugins are declared in `app/build.gradle.kts` instead, so a core-only build never needs Google's servers.
+- **`build.gradle.kts`** (root) — Declares every Gradle plugin once for the whole project (Android, Kotlin, Compose, KSP). Declaring them in one place lets the Kotlin and Android plugins see each other.
+- **`local.properties`** (not in git) — One line telling Gradle where the Android SDK is on this machine (`sdk.dir=…`). Each computer has its own.
 - **`gradle.properties`** — Build switches: memory for Gradle, build cache, and the AndroidX flag Android projects need.
 - **`gradle/libs.versions.toml`** — The version catalog: one list of every library and plugin with its version. Changing a version here changes it everywhere.
 - **`gradlew`, `gradlew.bat`, `gradle/wrapper/`** — The Gradle wrapper. It downloads the exact Gradle version (9.8.2) the project expects, so every machine builds the same way.
@@ -55,18 +56,18 @@ Gradle is the build tool: it downloads libraries, compiles the code and packs th
 - **`core/src/test/.../logger/LoggerTest.kt`** — Tests the CSV format against SPEC §4, the row builder, the app categories, the time windows and the sampling plan.
 - **`core/src/test/.../config/ThresholdsTest.kt`** — Checks the file and the knob list name the same keys, the §6–§8 numbers match SPEC, and bad values are rejected.
 
-## `app` — the Android app (UNBUILT)
-
-None of these has been built with the Android SDK yet. The Kotlin files were type-checked with `tools/typecheck` (see Tools); the XML files were only checked for being well-formed and for matching names.
+## `app` — the Android app (built; not yet run on a phone)
 
 **Build and identity**
 - **`app/build.gradle.kts`** — Builds the APK: package `de.ammar.qadam`, `minSdk 29` (Android 10), `targetSdk 37` (Android 17). After every debug build it runs the permission check, so an INTERNET permission can never slip in unnoticed.
+- **`app/debug.keystore`** — The key that signs debug builds. Android only installs an update if it is signed like the installed app, so one shared key means updates from any computer keep your logged data. It is the standard, non-secret debug key — fine for a private app, never for a public one.
 - **`app/src/main/AndroidManifest.xml`** — The manifest: the app's ID card. It lists every permission (and removes INTERNET even if a library adds it), the screens, the logger service (type "health"), the accessibility service, the NFC tag receiver and the boot receiver. Its `<queries>` block says which other apps Qadam may see (Android 11+ hides the rest).
 - **`QadamApp.kt`** — The Application object, created once when the app's process starts. It opens the database and creates the notification channels.
 - **`Bridge.kt`** — The meeting point inside the app's process: the logger service, the accessibility service, the NFC screen and the UI find each other here. It also holds the live values for the debug view and the scroll/tap counters. And the log tag `Qadam` (`adb logcat -s Qadam`).
 
 **Storage (`data/`)**
 - **`data/QadamDb.kt`** — The Room database: five tables (summary rows, events, small named values like the settings, pending loosenings, daily totals) and the DAO, the list of queries the app runs. Room turns these annotated Kotlin classes into SQLite code at build time.
+- **`app/schemas/`** — Room's record of the database layout (version 1), written at every build. If a table ever changes, Room needs this record to move your existing data to the new layout (a "migration") instead of wiping it.
 - **`data/Repo.kt`** — The one door to the database. It converts between `core`'s types and stored rows, applies the §8 commitment rules to every settings change, writes the CSV export page by page, and does the 30-day retention.
 
 **The logger (`service/`)**
@@ -110,5 +111,4 @@ None of these has been built with the Android SDK yet. The Kotlin files were typ
 
 ## Tools
 
-- **`tools/typecheck/`** — TEMPORARY, delete once the real build works. A separate small Gradle build that compiles the app and `core` sources against Android 17's framework classes (Robolectric's `android-all` jar from Maven Central) and desktop Compose, with stand-ins for Room and a few AndroidX pieces in `stubs/`. It caught wrong API names without the SDK; it is not a real build. Run: `./gradlew -p tools/typecheck compileKotlin`.
 - **`tools/check-apk-permissions.sh`** — Lists the permissions inside the built APK with `aapt2` (Android's resource tool) and fails if INTERNET is among them. AGENTS.md requires this after every build.

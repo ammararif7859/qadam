@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- UNBUILT: written without the Android SDK; not yet compiled. -->
 <!-- The manifest: the app's ID card. It lists permissions, screens and background parts. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">

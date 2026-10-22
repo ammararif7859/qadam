@@ -1,4 +1,3 @@
-// UNBUILT: never built with the Android SDK. Type-checked only (android-all 17 + Compose desktop + stubs), 21 Oct 2026.
 package de.ammar.qadam.accessibility
 
 import android.accessibilityservice.AccessibilityService
@@ -47,6 +46,7 @@ class QadamAccessibilityService : AccessibilityService() {
             AccessibilityEvent.TYPE_VIEW_SCROLLED ->
                 if (scrollGestures.onEvent(event.eventTime)) Bridge.scrolls.incrementAndGet()
             AccessibilityEvent.TYPE_VIEW_CLICKED -> Bridge.taps.incrementAndGet()
+            else -> {} // no other event types are subscribed (accessibility_service_config.xml)
         }
     }
 

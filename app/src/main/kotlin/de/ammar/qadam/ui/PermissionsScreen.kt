@@ -1,4 +1,3 @@
-// UNBUILT: never built with the Android SDK. Type-checked only (android-all 17 + Compose desktop + stubs), 21 Oct 2026.
 package de.ammar.qadam.ui
 
 import android.Manifest
@@ -79,7 +78,7 @@ fun PermissionsScreen(activity: Activity, modifier: Modifier) {
                 val ok = Build.VERSION.SDK_INT < 33 || granted(activity, Manifest.permission.POST_NOTIFICATIONS)
                 KeyValue("Status", if (ok) "granted" else "MISSING")
                 Hint("For the “Right now?” questions, screen-off nudges and the morning summary.")
-                if (!ok && Build.VERSION.SDK_INT >= 33) {
+                if (!ok) {
                     OutlinedButton(onClick = { askPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }) { Text("Grant") }
                 }
             }

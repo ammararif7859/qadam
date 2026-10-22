@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- UNBUILT. Android 10-11: exclude everything from backup (allowBackup is false anyway). -->
+<!-- Android 10-11: exclude everything from backup (allowBackup is false anyway). -->
 <full-backup-content>
     <exclude domain="root" path="." />
     <exclude domain="file" path="." />

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- UNBUILT. Android 12+: nothing goes to cloud backup or to a new phone. SPEC §3. -->
+<!-- Android 12+: nothing goes to cloud backup or to a new phone. SPEC §3. -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="root" path="." />

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- UNBUILT. Experience sampling, collapsed (as little as 48 dp high): six answers in one row. -->
+<!-- Experience sampling, collapsed (as little as 48 dp high): six answers in one row. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"

@@ -1,5 +1,3 @@
-// UNBUILT: written without the Android SDK (dl.google.com blocked); not yet compiled.
-//
 // `app`: the Android app. It collects signals, stores rows, draws screens and overlays,
 // and hands every decision to `core`.
 plugins {
@@ -18,6 +16,18 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1"
+    }
+
+    // One debug key for every machine (the debug key is not secret: password "android").
+    // Builds from this container, from Pi or from Android Studio then carry the same
+    // signature, so an update installs over the old app without deleting its data.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
@@ -61,7 +71,7 @@ ksp {
 }
 
 // After every debug build: list the APK's permissions and fail if INTERNET is among them.
-val checkApkPermissions by tasks.registering(Exec::class) {
+val checkApkPermissions = tasks.register<Exec>("checkApkPermissions") {
     description = "Lists the debug APK's permissions; fails if INTERNET is present."
     workingDir = rootDir
     commandLine("bash", "tools/check-apk-permissions.sh", "app/build/outputs/apk/debug/app-debug.apk")

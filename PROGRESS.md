@@ -3,7 +3,7 @@
 The handoff file. Whoever continues (Ammar, Pi, another agent) starts here.
 Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in section 9.
 
-**Last updated:** 21 Oct 2026 — after the Android side of Phases 0, 2, 3 (unbuilt, type-checked).
+**Last updated:** 22 Oct 2026 — the app is built (APK, tests, lint) and pushed to GitHub. Nothing has run on a phone yet.
 
 ---
 
@@ -11,23 +11,23 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
 
 | Part | Status |
 |---|---|
-| `core` (pure Kotlin, all rules) | **built and tested**: 120 unit tests pass (`./gradlew -Pqadam.coreOnly=true test`) |
-| `app` (Android) | **UNBUILT** — all of Phases 0, 2, 3 written; never built with the SDK; Kotlin type-checked with `tools/typecheck` |
+| `core` (pure Kotlin, all rules) | **built and tested**: 120 unit tests pass (`./gradlew test`) |
+| `app` (Android) | **built**: `assembleDebug` makes the APK, `lint` 0 errors, no INTERNET permission. **Not yet run on a phone.** |
 | Phase 1 script (`analysis/`) | **built and tested** on synthetic CSVs: 16 tests (`python3 -m unittest discover -s analysis`) |
-| Pushed to GitHub | **no** — no repo attached to the session yet |
+| GitHub | pushed to the private repo `ammararif7859/qadam`, branch `main` |
 
-## 2. Blockers in the Claude Code container (21 Oct)
+## 2. Build environment notes
 
-1. **`dl.google.com` is blocked** by the environment's network policy. The Android SDK
-   and Google's Maven (`maven.google.com` redirects there) both download from it. So
-   `./gradlew assembleDebug` and `lint` cannot run here. Fix: allow `dl.google.com` in
-   the environment's network settings, or build on a machine with the SDK (SPEC §15 Route A).
-2. **No GitHub repo attached**, so nothing is pushed. Ammar must connect GitHub
-   (https://claude.ai/connect-github), install the Claude GitHub App on a private repo,
-   and give its `owner/name`.
-3. Maven Central answers HTTP 429 at random from this container. Worked around with a
-   local retrying relay plus `~/.gradle/init.d/maven-central-repo1.init.gradle.kts`.
-   Both live outside the repo; a normal machine needs neither.
+- **Claude Code container (21–22 Oct):** `dl.google.com` was blocked until Ammar allowed it
+  on 22 Oct; GitHub was attached the same day. The Android SDK was installed at
+  `/root/android-sdk` (command-line tools 23.0, `platforms;android-37.0`,
+  `build-tools;37.0.0`, `platform-tools`) — that folder disappears with the container.
+- Maven Central answered HTTP 429 at random from that container; a local retrying relay
+  and `~/.gradle/init.d/maven-central-repo1.init.gradle.kts` worked around it. Both lived
+  outside the repo; a normal machine needs neither.
+- **Any machine:** the SDK location goes in `local.properties` (`sdk.dir=/path/to/sdk`,
+  ignored by git) or the `ANDROID_HOME` variable. Pi's image (SPEC §15 Route A) needs the
+  same SDK packages as above and JDK 17 or 21.
 
 ## 3. Done
 
@@ -46,18 +46,22 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
   table + plots per activity, rule replay, threshold sweeps, proposals in properties
   format), 16 tests. Runs a synthetic week in about 2 s.
 - `core` extras for the app — settings text format, scroll-gesture counter (120 tests).
-- Android side (UNBUILT) — Room database and repository; foreground logger service with
+- Android side — Room database and repository; foreground logger service with
   sensors, usage stats, audio/call/charging state, accelerometer fallbacks, summary and
   event rows, gap detection; accessibility scroll/tap counter and Level 1–3 overlays;
   audio focus, grayscale, vibration; NFC tag receiver and writer; sampling, Level 1
   screen-off and morning notifications; boot receiver; the five screens (Today with live
-  debug view, Rules, Tags, Data with CSV export, Permissions). Type-checked against
-  Robolectric's android-all 17 jar + desktop Compose 1.6.11 + stubs (`tools/typecheck`);
-  resources checked for well-formed XML and matching names.
+  debug view, Rules, Tags, Data with CSV export, Permissions). Written on 21 Oct without
+  the SDK (type-checked only, with a temporary harness since deleted).
+- First real build (22 Oct) — SDK installed; two build fixes: all Gradle plugins are now
+  declared in the root build file (the Kotlin plugin couldn't see the Android plugin's
+  classes), and a notification button style got an explicit parent. Then three lint fixes
+  (themed launcher icon, a redundant version check, an explicit `else`), a shared debug
+  signing key (`app/debug.keystore`), the UNBUILT marks removed, `tools/typecheck` deleted.
 
 ## 4. Built and tested vs unbuilt
 
-**Built and tested (`core`, 116 tests):**
+**Built and tested (`core`, 120 tests):**
 - `config/` — thresholds file, loader, knob directions.
 - `model/`, `csv/` — rows and the CSV export format.
 - `signals/` — gravity filter, motion meter, accelerometer step detector, step log.
@@ -72,29 +76,42 @@ Read `AGENTS.md` and `SPEC.md` first; the "This run" rules from 21 Oct are in se
 - `make_synthetic.py`, `qadam_analyze.py`, `test_analysis.py`. The Python rule replay works
   per summary row (30 s), the app's engine per 10-s tick, so their minutes differ slightly.
 
-**UNBUILT (`app`)** — every file under `app/` (header line says so). First real build:
-- Expect some build errors: the type check didn't cover Room's annotation processor (SQL
-  in `QadamDb.kt`), the real AndroidX APIs (stubs in `tools/typecheck/stubs` stood in for
-  Room, activity-compose, `LocalContext`), resource linking, the manifest merge, or lint.
-- Versions in `gradle/libs.versions.toml` were read from developer.android.com release
-  notes (AGP 9.4.0, Compose BOM 2026.09.00, Room 2.8.5, Activity 1.13.0, KSP 2.3.12) but
-  never resolved. Unchecked: KSP 2.3.12 with Kotlin 2.4.21 and Room 2.8.5.
-- `compileSdk = 37` uses the classic DSL; AGP 9 also has a newer `compileSdk { }` form. Unchecked.
-- Unchecked on HiOS: the grayscale setting names, audio focus pausing PipePipe, custom
-  notification layouts, accessibility overlays above the navigation bar.
-- After the real build works, delete `tools/typecheck/` and change the header lines.
+**Built, not yet run on a phone (`app`):**
+- `./gradlew test assembleDebug lint` passes. Versions in use: AGP 9.4.0, Gradle 9.8.2,
+  Kotlin 2.4.21, KSP 2.3.12, Compose BOM 2026.09.00, Room 2.8.5, Activity 1.13.0,
+  coroutines 1.11.0; compileSdk/targetSdk 37 (platform `android-37.0`), minSdk 29.
+- The APK's permissions (printed after every `assembleDebug`): FOREGROUND_SERVICE,
+  FOREGROUND_SERVICE_HEALTH, ACTIVITY_RECOGNITION, PACKAGE_USAGE_STATS, POST_NOTIFICATIONS,
+  RECEIVE_BOOT_COMPLETED, NFC, VIBRATE, REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+  WRITE_SECURE_SETTINGS, and `de.ammar.qadam.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`
+  (added by AndroidX; a private permission only Qadam itself holds). **No INTERNET.**
+- Merged manifest checked: allowBackup false, data-extraction rules set, service type
+  health, accessibility events = clicked + scrolled only, canRetrieveWindowContent false.
+- Lint: 0 errors, 21 warnings, none about permissions. Left as they are: hard-coded
+  English text (no translation planned), "use androidx.core-ktx" hints (not a dependency),
+  `isAccessibilityTool` ignored below Android 12.
+- Unchecked until the phone: everything at run time. Most likely to need work on HiOS: the
+  grayscale setting names, audio focus pausing PipePipe, the custom sampling notification,
+  accessibility overlays above the navigation bar, HiOS killing the service.
 
 ## 5. Phone checks Ammar still owes
 
-Nothing can be checked on the phone until the app builds. Full list:
+Full list, in order. Ammar can start in late November.
 
-**Build (any machine with the SDK)**
-- [ ] `./gradlew test assembleDebug lint` passes; the permission list printed after
-      `assembleDebug` has no INTERNET.
-
-**First install (laptop + phone)**
-- [ ] `adb install -r app/build/outputs/apk/debug/app-debug.apk` (installs the debug APK
-      over USB; nothing else changes on the phone).
+**First install (laptop + phone), step by step**
+- [ ] Get the APK: the file `qadam-0.1-debug.apk` sent in the Claude Code chat on 22 Oct
+      (same code as commit "First real Android build"), or build a fresh one with
+      `./gradlew assembleDebug` on a machine with the SDK → `app/build/outputs/apk/debug/app-debug.apk`.
+- [ ] Laptop (Ubuntu): `sudo apt install adb` — installs adb, the tool that talks to the
+      phone over USB.
+- [ ] Phone: Settings → About phone → tap "Build number" 7 times (Developer options appear;
+      on HiOS the menu may be called slightly differently). Then Settings → System →
+      Developer options → USB debugging → on.
+- [ ] Connect the phone by USB cable. Laptop: `adb devices`. The phone asks "Allow USB
+      debugging?" → Allow. `adb devices` then lists one device.
+- [ ] Laptop: `adb install -r qadam-0.1-debug.apk` (use the file's real path) — installs or
+      updates Qadam; nothing else on the phone changes. Updates built later from this repo
+      install over it with their data kept (same signing key, `app/debug.keystore`).
 - [ ] Open Qadam → Permissions: grant Activity recognition (the logger needs it on
       Android 14), Notifications, Usage access, Accessibility (if greyed out: App info → ⋮ →
       Allow restricted settings), battery "Unrestricted", and the three HiOS settings.
@@ -115,7 +132,8 @@ Nothing can be checked on the phone until the app builds. Full list:
 - [ ] 1. Runs 3 days without Android killing it.
 - [ ] 2. Battery use (Settings → Battery) about 5 % a day or less.
 - [ ] 3. Exported CSV opens on the laptop, with labels in it.
-- [ ] 4. The APK's permission list has no INTERNET.
+- [ ] 4. The APK's permission list has no INTERNET (already true for the 22 Oct build;
+      re-check after any rebuild: it is printed after `assembleDebug`).
 
 **Phase 1 (laptop, after 1–3 weeks of Phase 0 logging)**
 - [ ] Export the summary CSV, run `python3 analysis/qadam_analyze.py export.csv`, read
@@ -145,7 +163,13 @@ Structure and versions
 - `targetSdk`/`compileSdk` 37 (Android 17 is the latest stable, checked 21 Oct 2026).
 - All tunable numbers live in one file: `core/src/main/resources/qadam/thresholds.properties`.
   The app reads it as defaults; the Phase 1 script reads it too.
-- Core-only builds: `settings.gradle.kts` skips `:app` when `-Pqadam.coreOnly=true` is passed.
+- Core-only builds: `settings.gradle.kts` skips `:app` when `-Pqadam.coreOnly=true` is passed
+  (useful without the SDK; Google's Maven must still be reachable for the plugins).
+- All Gradle plugins are declared once in the root `build.gradle.kts` (`apply false`), so
+  the Kotlin and Android plugins share one class loader (AGP 9's built-in Kotlin needs this).
+- One debug signing key in the repo (`app/debug.keystore`, the standard non-secret debug
+  password). Every machine's debug build gets the same signature, so updates install over
+  the logged data instead of needing an uninstall. Never use it for anything public.
 
 Settings defaults (This-run rule 9)
 - Bedtime 23:30; NIGHT ends 06:00 (SPEC gives no wake time; a setting). Meal windows empty.
@@ -232,17 +256,20 @@ Commitment (§8)
 
 ## 7. Next step
 
-**Build the app with the Android SDK** (Pi's `pi-android` image, SPEC §15 Route A, or this
-container once `dl.google.com` is allowed): `./gradlew test assembleDebug lint`, fix the
-build errors, show Ammar the permission list, then delete `tools/typecheck/` and update the
-UNBUILT header lines. Then Ammar's phone checks, in section 5's order. Phase 0 first:
-interventions stay off (`maxLevel` 0) until Phase 1's numbers are in.
+**Ammar, late November:** section 5 in order — first install, then Phase 0 (interventions
+stay off, `maxLevel` 0, until Phase 1's numbers are in).
+
+**The next agent (Pi):** nothing to build until the phone reports back. When something
+fails on the phone, ask for `adb logcat -s Qadam` (AGENTS.md rule 5); fix it in a small
+step; rebuild with `./gradlew test assembleDebug lint`; Ammar reinstalls with
+`adb install -r`. Pi's image needs the SDK packages listed in section 2.
 
 ## 8. How to build
 
-- With the Android SDK: `./gradlew test assembleDebug lint`
-  (`assembleDebug` runs `tools/check-apk-permissions.sh` automatically).
-- Without it: `./gradlew -Pqadam.coreOnly=true test`
+- Everything: `./gradlew test assembleDebug lint` (needs the SDK, see section 2).
+  `assembleDebug` runs `tools/check-apk-permissions.sh` automatically and fails on INTERNET.
+- `core` only, without the SDK: `./gradlew -Pqadam.coreOnly=true test`
+- Phase 1 script: `python3 -m unittest discover -s analysis`
 - Install: `adb install -r app/build/outputs/apk/debug/app-debug.apk`
 
 ## 9. "This run" rules (21 Oct, override AGENTS.md where they differ)

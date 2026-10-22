@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- UNBUILT. Texts Android itself shows (app name, accessibility settings). -->
+<!-- Texts Android itself shows (app name, accessibility settings). -->
 <resources>
     <string name="app_name">Qadam</string>
     <string name="accessibility_label">Qadam scroll counter</string>
